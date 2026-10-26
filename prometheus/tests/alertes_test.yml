@@ -1,0 +1,70 @@
+# Tests automatiques des alertes : on simule des mesures et on vérifie
+# que la bonne alerte se déclenche au bon moment (et pas avant).
+# Lancer : promtool test rules prometheus/tests/alertes_test.yml
+
+rule_files:
+  - ../regles/alertes.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      # Le serveur répond 2 minutes, puis tombe.
+      - series: 'up{job="linux", instance="srv-web01:9100", client="client-a"}'
+        values: "1 1 0 0 0 0 0 0 0 0"
+      # Ce serveur reste en ligne : il ne doit jamais alerter.
+      - series: 'up{job="windows", instance="srv-ad01:9182", client="client-b"}'
+        values: "1 1 1 1 1 1 1 1 1 1"
+    alert_rule_test:
+      # 4 minutes après : la panne dure depuis 2 minutes, pas encore d'alerte.
+      - eval_time: 4m
+        alertname: CibleInjoignable
+        exp_alerts: []
+      # 8 minutes après : la panne dépasse 5 minutes, l'alerte part.
+      - eval_time: 8m
+        alertname: CibleInjoignable
+        exp_alerts:
+          - exp_labels:
+              severite: critique
+              job: linux
+              instance: srv-web01:9100
+              client: client-a
+            exp_annotations:
+              resume: "srv-web01:9100 ne répond plus (client-a)"
+
+  - interval: 1m
+    input_series:
+      - series: 'probe_success{job="sites-web", instance="https://boutique.client-a.fr", client="client-a"}'
+        values: "1 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SiteInaccessible
+        exp_alerts:
+          - exp_labels:
+              severite: critique
+              job: sites-web
+              instance: https://boutique.client-a.fr
+              client: client-a
+            exp_annotations:
+              resume: "Le site https://boutique.client-a.fr ne répond pas (client-a)"
+
+  - interval: 1m
+    input_series:
+      # 92 Go libres sur 100 Go, puis 5 Go : le disque se remplit.
+      - series: 'windows_logical_disk_free_bytes{job="windows", instance="srv-fichiers:9182", client="client-b", volume="D:"}'
+        values: "92e9 5e9x30"
+      - series: 'windows_logical_disk_size_bytes{job="windows", instance="srv-fichiers:9182", client="client-b", volume="D:"}'
+        values: "100e9x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: DisqueWindowsPresquePlein
+        exp_alerts:
+          - exp_labels:
+              severite: avertissement
+              job: windows
+              instance: srv-fichiers:9182
+              client: client-b
+              volume: "D:"
+            exp_annotations:
+              resume: "Moins de 10 % libre sur D: de srv-fichiers:9182 (client-b)"

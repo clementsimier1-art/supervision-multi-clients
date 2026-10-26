@@ -1,0 +1,30 @@
+# Qui prévenir, et comment.
+# Les alertes sont regroupées par client pour ne pas noyer l'équipe.
+
+route:
+  receiver: equipe-support
+  group_by: [client, alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severite="critique"']
+      receiver: equipe-support
+      repeat_interval: 1h
+
+# Sans canal configuré, les alertes restent visibles sur http://localhost:9093.
+# Exemple d'envoi par e-mail, à ajouter sous "- name: equipe-support" :
+#   email_configs:
+#     - to: support@mon-esn.fr
+#       from: supervision@mon-esn.fr
+#       smarthost: smtp.mon-esn.fr:587
+#       auth_username: supervision@mon-esn.fr
+#       auth_password_file: /etc/alertmanager/mot-de-passe-smtp
+receivers:
+  - name: equipe-support
+
+inhibit_rules:
+  # Si un serveur est injoignable, inutile d'alerter aussi sur son disque.
+  - source_matchers: ['alertname="CibleInjoignable"']
+    target_matchers: ['severite="avertissement"']
+    equal: [instance]

@@ -1,0 +1,59 @@
+# Règles d'alerte. Chaque alerte garde le label "client" de la machine
+# concernée, pour savoir tout de suite chez qui intervenir.
+
+groups:
+  - name: disponibilite
+    rules:
+      - alert: CibleInjoignable
+        expr: up{job=~"linux|windows"} == 0
+        for: 5m
+        labels:
+          severite: critique
+        annotations:
+          resume: "{{ $labels.instance }} ne répond plus ({{ $labels.client }})"
+
+      - alert: SiteInaccessible
+        expr: probe_success{job="sites-web"} == 0
+        for: 3m
+        labels:
+          severite: critique
+        annotations:
+          resume: "Le site {{ $labels.instance }} ne répond pas ({{ $labels.client }})"
+
+      - alert: CertificatExpireBientot
+        expr: (probe_ssl_earliest_cert_expiry{job="sites-web"} - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severite: avertissement
+        annotations:
+          resume: "Le certificat de {{ $labels.instance }} expire dans moins de 14 jours ({{ $labels.client }})"
+
+  - name: ressources
+    rules:
+      - alert: DisqueLinuxPresquePlein
+        expr: |
+          node_filesystem_avail_bytes{job="linux", fstype!~"tmpfs|overlay|squashfs"}
+            / node_filesystem_size_bytes{job="linux", fstype!~"tmpfs|overlay|squashfs"} < 0.10
+        for: 15m
+        labels:
+          severite: avertissement
+        annotations:
+          resume: "Moins de 10 % libre sur {{ $labels.mountpoint }} de {{ $labels.instance }} ({{ $labels.client }})"
+
+      - alert: DisqueWindowsPresquePlein
+        expr: |
+          windows_logical_disk_free_bytes{job="windows", volume!~"HarddiskVolume.*"}
+            / windows_logical_disk_size_bytes{job="windows", volume!~"HarddiskVolume.*"} < 0.10
+        for: 15m
+        labels:
+          severite: avertissement
+        annotations:
+          resume: "Moins de 10 % libre sur {{ $labels.volume }} de {{ $labels.instance }} ({{ $labels.client }})"
+
+      - alert: MemoireLinuxSaturee
+        expr: 1 - node_memory_MemAvailable_bytes{job="linux"} / node_memory_MemTotal_bytes{job="linux"} > 0.95
+        for: 15m
+        labels:
+          severite: avertissement
+        annotations:
+          resume: "Mémoire utilisée à plus de 95 % sur {{ $labels.instance }} ({{ $labels.client }})"

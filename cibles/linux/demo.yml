@@ -1,0 +1,5 @@
+# Un fichier par client. Le label "client" se retrouve dans les
+# tableaux de bord et dans chaque alerte.
+- targets: ["demo-linux:9100"]
+  labels:
+    client: client-demo

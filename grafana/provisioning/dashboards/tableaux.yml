@@ -1,0 +1,9 @@
+# Grafana charge les tableaux de bord rangés dans grafana/tableaux/.
+apiVersion: 1
+providers:
+  - name: tableaux-esn
+    folder: Supervision ESN
+    type: file
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/tableaux

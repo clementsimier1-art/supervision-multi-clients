@@ -1,0 +1,74 @@
+# Pipeline : à chaque modification, on vérifie les configurations,
+# on teste les alertes, puis on démarre la stack pour de vrai.
+name: Vérifier la supervision
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configurations:
+    name: Vérifier les configurations et tester les alertes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Vérifier la syntaxe YAML
+        run: pipx run yamllint -c .yamllint.yml .
+
+      - name: Vérifier le fichier docker compose
+        run: docker compose config -q
+
+      - name: Vérifier la configuration Prometheus
+        run: >
+          docker run --rm
+          -v "$PWD/prometheus:/etc/prometheus:ro"
+          -v "$PWD/cibles:/etc/prometheus/cibles:ro"
+          --entrypoint promtool prom/prometheus:v3.5.0
+          check config /etc/prometheus/prometheus.yml
+
+      - name: Tester les règles d'alerte
+        run: >
+          docker run --rm
+          -v "$PWD/prometheus:/etc/prometheus:ro"
+          -w /etc/prometheus/tests
+          --entrypoint promtool prom/prometheus:v3.5.0
+          test rules alertes_test.yml
+
+      - name: Vérifier la configuration Alertmanager
+        run: >
+          docker run --rm
+          -v "$PWD/alertmanager:/etc/alertmanager:ro"
+          --entrypoint amtool prom/alertmanager:v0.28.1
+          check-config /etc/alertmanager/alertmanager.yml
+
+      - name: Vérifier le tableau de bord Grafana
+        run: python3 -m json.tool grafana/tableaux/vue-multi-clients.json > /dev/null
+
+  demarrage:
+    name: Démarrer la stack et vérifier qu'elle fonctionne
+    needs: configurations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Démarrer la stack
+        run: docker compose up -d
+
+      - name: Vérifier chaque service
+        run: ./scripts/verifier-stack.sh
+
+      - name: Afficher les journaux en cas d'échec
+        if: failure()
+        run: docker compose logs
+
+      - name: Arrêter la stack
+        if: always()
+        run: docker compose down -v

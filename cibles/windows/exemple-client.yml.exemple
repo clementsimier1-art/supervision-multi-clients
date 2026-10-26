@@ -1,0 +1,5 @@
+# Exemple pour un client avec des serveurs Windows.
+# Renommer en .yml une fois l'agent windows_exporter installé.
+- targets: ["srv-ad01.client-exemple.local:9182", "srv-fichiers.client-exemple.local:9182"]
+  labels:
+    client: client-exemple

@@ -1,0 +1,49 @@
+# Configuration de Prometheus.
+# Les machines à surveiller ne sont pas listées ici : elles sont dans le
+# dossier cibles/, un fichier par client. Prometheus relit ces fichiers
+# tout seul, sans redémarrage.
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/regles/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # La stack se surveille elle-même.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          client: esn-interne
+
+  # Serveurs Linux des clients (agent node_exporter, port 9100).
+  - job_name: linux
+    file_sd_configs:
+      - files: ["/etc/prometheus/cibles/linux/*.yml"]
+
+  # Serveurs Windows des clients (agent windows_exporter, port 9182).
+  - job_name: windows
+    file_sd_configs:
+      - files: ["/etc/prometheus/cibles/windows/*.yml"]
+
+  # Sites web et services en ligne des clients, testés de l'extérieur.
+  - job_name: sites-web
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    file_sd_configs:
+      - files: ["/etc/prometheus/cibles/web/*.yml"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

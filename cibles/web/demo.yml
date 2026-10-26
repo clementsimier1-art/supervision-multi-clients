@@ -1,0 +1,5 @@
+- targets:
+    - https://www.service-public.fr
+    - https://www.impots.gouv.fr
+  labels:
+    client: client-demo

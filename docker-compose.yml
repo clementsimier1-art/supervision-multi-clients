@@ -1,0 +1,63 @@
+# Stack de supervision multi-clients pour une ESN.
+# Lancer : docker compose up -d   |   Arrêter : docker compose down
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - ./cibles:/etc/prometheus/cibles:ro
+      - donnees-prometheus:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.27.0
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+    ports:
+      - "9115:9115"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:12.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_MOT_DE_PASSE:-changez-moi}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/tableaux:/var/lib/grafana/tableaux:ro
+      - donnees-grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Serveur Linux de démonstration : la stack se surveille elle-même
+  # pour qu'on voie des données sans avoir de vrai client.
+  demo-linux:
+    image: prom/node-exporter:v1.9.1
+    restart: unless-stopped
+
+volumes:
+  donnees-prometheus:
+  donnees-grafana:

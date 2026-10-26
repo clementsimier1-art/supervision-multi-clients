@@ -28,7 +28,8 @@ jobs:
       - name: Vérifier la configuration Prometheus
         run: >
           docker run --rm
-          -v "$PWD/prometheus:/etc/prometheus:ro"
+          -v "$PWD/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+          -v "$PWD/prometheus/regles:/etc/prometheus/regles:ro"
           -v "$PWD/cibles:/etc/prometheus/cibles:ro"
           --entrypoint promtool prom/prometheus:v3.5.0
           check config /etc/prometheus/prometheus.yml

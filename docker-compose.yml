@@ -9,7 +9,10 @@ services:
       - --storage.tsdb.retention.time=30d
       - --web.enable-lifecycle
     volumes:
-      - ./prometheus:/etc/prometheus:ro
+      # Chaque dossier est monté séparément : un montage imbriqué dans un
+      # dossier en lecture seule empêche le conteneur de démarrer.
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/regles:/etc/prometheus/regles:ro
       - ./cibles:/etc/prometheus/cibles:ro
       - donnees-prometheus:/prometheus
     ports:

@@ -1,2 +1,4 @@
 .env
 *.log
+# Cibles générées à partir de l'inventaire d'exemple (tests uniquement)
+cibles/*/exemple-client.yml

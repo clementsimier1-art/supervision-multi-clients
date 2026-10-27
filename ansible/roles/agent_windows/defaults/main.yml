@@ -1,0 +1,6 @@
+agent_windows_version: "0.31.7"
+agent_windows_url: >-
+  https://github.com/prometheus-community/windows_exporter/releases/download/v{{ agent_windows_version
+  }}/windows_exporter-{{ agent_windows_version }}-amd64.msi
+agent_windows_port: 9182
+agent_windows_dossier: C:\Temp\supervision

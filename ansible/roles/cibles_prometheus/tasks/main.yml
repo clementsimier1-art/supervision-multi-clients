@@ -1,0 +1,36 @@
+# Les fichiers générés vont dans le dossier cibles/ du projet, que
+# Prometheus relit tout seul : le client apparaît sans redémarrage.
+
+- name: Vérifier que le nom du client est renseigné
+  ansible.builtin.assert:
+    that:
+      - client is defined
+      - client is match('^[a-z0-9-]+$')
+    fail_msg: "La variable 'client' doit exister et ne contenir que des minuscules, chiffres et tirets."
+
+- name: Générer les cibles des serveurs Linux
+  ansible.builtin.template:
+    src: cibles-serveurs.yml.j2
+    dest: "{{ playbook_dir }}/../cibles/linux/{{ client }}.yml"
+    mode: "0644"
+  vars:
+    cibles_prometheus_serveurs: "{{ groups['linux'] | default([]) }}"
+    cibles_prometheus_port: 9100
+  when: groups['linux'] | default([]) | length > 0
+
+- name: Générer les cibles des serveurs Windows
+  ansible.builtin.template:
+    src: cibles-serveurs.yml.j2
+    dest: "{{ playbook_dir }}/../cibles/windows/{{ client }}.yml"
+    mode: "0644"
+  vars:
+    cibles_prometheus_serveurs: "{{ groups['windows'] | default([]) }}"
+    cibles_prometheus_port: 9182
+  when: groups['windows'] | default([]) | length > 0
+
+- name: Générer les cibles des sites web
+  ansible.builtin.template:
+    src: cibles-web.yml.j2
+    dest: "{{ playbook_dir }}/../cibles/web/{{ client }}.yml"
+    mode: "0644"
+  when: sites_web | default([]) | length > 0

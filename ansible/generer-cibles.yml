@@ -1,0 +1,10 @@
+# Écrit cibles/linux/<client>.yml, cibles/windows/<client>.yml et
+# cibles/web/<client>.yml à partir de l'inventaire du client.
+# Ne touche aucun serveur : peut être lancé seul pour un nouveau client.
+
+- name: Générer les cibles Prometheus du client
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - cibles_prometheus

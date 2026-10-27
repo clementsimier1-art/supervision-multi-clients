@@ -1,0 +1,40 @@
+# Inventaire d'un client : un fichier par client.
+# Copier ce fichier, le renommer avec le nom du client, puis adapter
+# les adresses. Il sert aussi aux tests automatiques du pipeline.
+#
+# Utilisation (depuis le dossier ansible/) :
+#   ansible-playbook -i inventaires/exemple-client.yml deployer-agents.yml -K
+
+all:
+  vars:
+    # Nom du client : il apparaîtra dans Grafana et dans chaque alerte.
+    client: exemple-client
+
+    # Sites web du client à tester depuis l'extérieur.
+    sites_web:
+      - https://www.exemple-client.fr
+
+    # Adresse du serveur de supervision. Si elle est renseignée, seul
+    # ce serveur pourra lire les agents (pare-feu). Vide = tout le réseau.
+    serveur_supervision: ""
+
+  children:
+    linux:
+      hosts:
+        srv-web01:
+          ansible_host: 192.0.2.10
+      vars:
+        ansible_user: admin
+
+    windows:
+      hosts:
+        srv-ad01:
+          ansible_host: 192.0.2.20
+      vars:
+        ansible_connection: winrm
+        ansible_winrm_transport: ntlm
+        ansible_port: 5985
+        ansible_user: admin
+        # Le mot de passe n'est jamais écrit dans un fichier : il est lu
+        # dans la variable d'environnement MOT_DE_PASSE_WINDOWS.
+        ansible_password: "{{ lookup('ansible.builtin.env', 'MOT_DE_PASSE_WINDOWS') }}"

@@ -1,0 +1,8 @@
+# Généré par Ansible depuis l'inventaire du client {{ client }}.
+# Ne pas modifier à la main : modifier l'inventaire et relancer Ansible.
+- targets:
+{% for site in sites_web %}
+    - {{ site }}
+{% endfor %}
+  labels:
+    client: {{ client }}

@@ -73,6 +73,26 @@ Un client = un fichier par type de cible dans le dossier `cibles/`. Prometheus r
 
 Même principe pour `cibles/linux/` et `cibles/web/` (une liste d'adresses de sites).
 
+## Installer les agents chez un client (Ansible)
+
+Plutôt que de se connecter serveur par serveur, on décrit les serveurs d'un client dans un inventaire, et une seule commande :
+
+1. installe l'agent `node_exporter` sur ses serveurs Linux (Debian, Ubuntu) et ouvre le pare-feu UFW si besoin ;
+2. installe l'agent `windows_exporter` sur ses serveurs Windows, avec son exception dans le pare-feu ;
+3. génère les fichiers `cibles/` du client : il apparaît dans Prometheus et Grafana sans rien redémarrer.
+
+Prérequis sur le poste d'administration (Linux ou WSL) : `sudo apt install -y ansible python3-winrm`.
+Prérequis chez le client : SSH avec une clé pour les serveurs Linux, WinRM activé (`Enable-PSRemoting -Force`) pour les serveurs Windows.
+
+```bash
+cd ansible
+cp inventaires/exemple-client.yml inventaires/boulangerie-martin.yml   # puis adapter les adresses
+export MOT_DE_PASSE_WINDOWS='...'                                      # jamais écrit dans un fichier
+ansible-playbook -i inventaires/boulangerie-martin.yml deployer-agents.yml -K
+```
+
+`-K` demande le mot de passe `sudo` des serveurs Linux. Pour générer uniquement les cibles, sans toucher aux serveurs : `ansible-playbook -i inventaires/boulangerie-martin.yml generer-cibles.yml`.
+
 ## Qualité : tests et pipeline
 
 À chaque modification, [GitHub Actions](.github/workflows/verifier.yml) :
@@ -80,7 +100,8 @@ Même principe pour `cibles/linux/` et `cibles/web/` (une liste d'adresses de si
 1. vérifie la syntaxe de tous les fichiers YAML ;
 2. valide les configurations Prometheus et Alertmanager avec leurs outils officiels ;
 3. **teste les alertes** ([prometheus/tests](prometheus/tests/alertes_test.yml)) : on simule une panne et on vérifie que l'alerte part au bon moment, et pas avant ;
-4. démarre réellement la stack et vérifie que chaque service répond, que les mesures arrivent et que le tableau de bord est créé ([scripts/verifier-stack.sh](scripts/verifier-stack.sh)).
+4. analyse les playbooks Ansible avec `ansible-lint`, génère les cibles d'un client d'exemple et vérifie que Prometheus les accepte ;
+5. démarre réellement la stack et vérifie que chaque service répond, que les mesures arrivent et que le tableau de bord est créé ([scripts/verifier-stack.sh](scripts/verifier-stack.sh)).
 
 Une modification qui casse quelque chose est bloquée avant d'arriver en production.
 
@@ -88,7 +109,7 @@ Une modification qui casse quelque chose est bloquée avant d'arriver en product
 
 - [x] Stack Prometheus, Alertmanager, Grafana, Blackbox en docker compose
 - [x] Alertes testées automatiquement et pipeline CI
-- [ ] Déploiement automatique des agents sur les serveurs clients avec Ansible
+- [x] Déploiement automatique des agents sur les serveurs clients avec Ansible
 - [ ] Remontée de l'état des sauvegardes Veeam (script PowerShell + collecteur textfile de windows_exporter)
 - [ ] Envoi des alertes par e-mail ou Microsoft Teams
 - [ ] Déploiement de la stack sur un serveur avec Ansible

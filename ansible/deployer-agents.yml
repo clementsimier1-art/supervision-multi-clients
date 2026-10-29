@@ -1,0 +1,18 @@
+# Déploie la supervision chez un client, en une commande :
+#   1. installe l'agent node_exporter sur ses serveurs Linux ;
+#   2. installe l'agent windows_exporter sur ses serveurs Windows ;
+#   3. génère les fichiers cibles/ que Prometheus lit.
+
+- name: Installer l'agent de supervision sur les serveurs Linux
+  hosts: linux
+  become: true
+  roles:
+    - agent_linux
+
+- name: Installer l'agent de supervision sur les serveurs Windows
+  hosts: windows
+  roles:
+    - agent_windows
+
+- name: Générer les cibles Prometheus du client
+  ansible.builtin.import_playbook: generer-cibles.yml

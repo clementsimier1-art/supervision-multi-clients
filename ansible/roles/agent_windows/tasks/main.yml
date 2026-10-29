@@ -1,0 +1,36 @@
+# Agent Windows : l'installeur officiel windows_exporter (service Windows
+# + exception dans le pare-feu).
+
+- name: Créer le dossier de téléchargement
+  ansible.windows.win_file:
+    path: "{{ agent_windows_dossier }}"
+    state: directory
+
+- name: Télécharger l'installeur windows_exporter
+  ansible.windows.win_get_url:
+    url: "{{ agent_windows_url }}"
+    dest: "{{ agent_windows_dossier }}\\windows_exporter-{{ agent_windows_version }}.msi"
+
+- name: Installer windows_exporter avec son exception pare-feu
+  ansible.windows.win_package:
+    path: "{{ agent_windows_dossier }}\\windows_exporter-{{ agent_windows_version }}.msi"
+    arguments: >-
+      ADDLOCAL=FirewallException
+      LISTEN_PORT={{ agent_windows_port }}
+      {{ ('REMOTE_ADDR=' ~ serveur_supervision) if (serveur_supervision | default('', true)) else '' }}
+    state: present
+
+- name: Démarrer le service et l'activer au démarrage
+  ansible.windows.win_service:
+    name: windows_exporter
+    state: started
+    start_mode: auto
+
+- name: Vérifier que l'agent répond
+  ansible.windows.win_uri:
+    url: "http://localhost:{{ agent_windows_port }}/metrics"
+    status_code: 200
+  register: agent_windows_reponse
+  retries: 5
+  delay: 3
+  until: agent_windows_reponse.status_code == 200

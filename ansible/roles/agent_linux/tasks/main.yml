@@ -1,0 +1,37 @@
+# Agent Linux : le paquet officiel de la distribution (Debian, Ubuntu).
+
+- name: Installer node_exporter
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Démarrer node_exporter et l'activer au démarrage
+  ansible.builtin.service:
+    name: prometheus-node-exporter
+    state: started
+    enabled: true
+
+- name: Lire l'état du pare-feu UFW
+  ansible.builtin.command: ufw status
+  register: agent_linux_etat_ufw
+  changed_when: false
+  failed_when: false
+
+- name: Ouvrir le port de l'agent dans UFW
+  ansible.builtin.command: >-
+    ufw allow from {{ serveur_supervision | default('', true) or 'any' }}
+    to any port {{ agent_linux_port }} proto tcp
+  register: agent_linux_regle_ufw
+  changed_when: "'Skipping' not in agent_linux_regle_ufw.stdout"
+  when: "'Status: active' in agent_linux_etat_ufw.stdout"
+
+- name: Vérifier que l'agent répond
+  ansible.builtin.uri:
+    url: "http://localhost:{{ agent_linux_port }}/metrics"
+    status_code: 200
+  register: agent_linux_reponse
+  retries: 5
+  delay: 3
+  until: agent_linux_reponse.status == 200

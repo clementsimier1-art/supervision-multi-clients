@@ -1,0 +1,3 @@
+# Collections Ansible utilisées (déjà incluses dans le paquet "ansible").
+collections:
+  - name: ansible.windows

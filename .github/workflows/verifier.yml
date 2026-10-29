@@ -52,9 +52,41 @@ jobs:
       - name: Vérifier le tableau de bord Grafana
         run: python3 -m json.tool grafana/tableaux/vue-multi-clients.json > /dev/null
 
+  ansible:
+    name: Vérifier les playbooks Ansible
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Installer Ansible et ansible-lint
+        run: pip install ansible ansible-lint pywinrm
+
+      - name: Analyser les playbooks (bonnes pratiques)
+        run: ansible-lint
+
+      - name: Vérifier la syntaxe du déploiement
+        run: ansible-playbook -i inventaires/exemple-client.yml deployer-agents.yml --syntax-check
+
+      - name: Générer les cibles du client d'exemple
+        run: ansible-playbook -i inventaires/exemple-client.yml generer-cibles.yml
+
+      - name: Vérifier que Prometheus accepte les cibles générées
+        working-directory: .
+        run: >
+          docker run --rm
+          -v "$PWD/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+          -v "$PWD/prometheus/regles:/etc/prometheus/regles:ro"
+          -v "$PWD/cibles:/etc/prometheus/cibles:ro"
+          --entrypoint promtool prom/prometheus:v3.5.0
+          check config /etc/prometheus/prometheus.yml
+
   demarrage:
     name: Démarrer la stack et vérifier qu'elle fonctionne
-    needs: configurations
+    needs: [configurations, ansible]
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le code
